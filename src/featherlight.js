@@ -218,7 +218,7 @@
 			var self = this,
 				filters = this.constructor.contentFilters,
 				readTargetAttr = function(name){ return self.$currentTarget && self.$currentTarget.attr(name); },
-				targetValue = readTargetAttr(self.targetAttr),
+				targetValue    = validateFeatherlightInput( readTargetAttr( self.targetAttr ) ),
 				data = self.target || targetValue || '';
 
 			/* Find which filter applies */
@@ -666,3 +666,37 @@
 	/* bind featherlight on ready if config autoBind is set */
 	$(document).ready(function(){ Featherlight._onReady(); });
 });
+
+/**
+ * Validates and sanitizes a given input string for use with featherlight.js. The input is checked for valid CSS selectors or URLs,
+ * and any dangerous patterns (e.g., HTML, javascript links, or event handlers) are removed.
+ *
+ * @param {string} input - The input string to validate. It may represent a CSS selector or a URL.
+ * @return {(string|boolean)} - Returns the sanitized input string if valid, or `false` if the input is invalid.
+ */
+function validateFeatherlightInput(input) {
+	const validSelectorRegex = /^[#.][\w-]+$/; // Pattern to match valid CSS selectors (class or ID).
+	const validURLRegex      = /^https?:\/\/[^\s]+$/; // Pattern to match valid URLs.
+	const dangerousPatterns = [
+		/<.*>/, // No HTML.
+		/javascript:/i, // No javascript: URLs.
+		/data:/i, // No data: URLs.
+		/vbscript:/i, // No VBScript.
+		/on\w+\s*=/i // No event handlers.
+	];
+
+	if (typeof input !== 'string') {
+		return false;
+	}
+
+	let sanitized = input.trim();
+
+	// Remove dangerous patterns.
+	dangerousPatterns.forEach(
+		pattern => {
+			sanitized = sanitized.replace( pattern, '' );
+		}
+	);
+	// Validate final result.
+	return validSelectorRegex.test( sanitized ) || validURLRegex.test( sanitized ) ? sanitized : false;
+}
